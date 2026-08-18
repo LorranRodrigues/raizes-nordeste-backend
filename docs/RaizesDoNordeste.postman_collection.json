@@ -1,0 +1,306 @@
+{
+  "info": {
+    "name": "Raízes do Nordeste - API Backend",
+    "description": "Coleção de testes da API (PHP puro + MySQL). Ordem sugerida: Auth → Cadastros → Cardápio → Clientes → Pedidos → Pagamento → Relatórios → Erros. Faça o Login primeiro: o token é salvo automaticamente em {{token}}. Cenários mapeados aos IDs T01..T16 do PLANO-DE-TESTES.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost/lorran/apiBackendUninter/public" },
+    { "key": "token", "value": "" },
+    { "key": "token_gerente", "value": "" },
+    { "key": "webhook_secret", "value": "webhook-secret-simulado" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "T01 Login válido (matriz)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.success) pm.collectionVariables.set('token', j.data.token);",
+                  "pm.test('200 + token', function(){ pm.response.to.have.status(200); pm.expect(j.data.token).to.be.a('string'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"matriz@raizes.com\",\n  \"senha\": \"senha123\"\n}" },
+            "url": "{{base_url}}/api/auth/login"
+          }
+        },
+        {
+          "name": "T02 Login gerente (para testes de permissão)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.success) pm.collectionVariables.set('token_gerente', j.data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"gerente.recife@raizes.com\",\n  \"senha\": \"senha123\"\n}" },
+            "url": "{{base_url}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Eu (me)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cadastros",
+      "item": [
+        {
+          "name": "T03 Criar produto (matriz)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"categoria_id\": 1,\n  \"nome\": \"Tapioca de Queijo\",\n  \"preco_base\": 14.00,\n  \"sazonal\": false\n}" },
+            "url": "{{base_url}}/api/produtos"
+          }
+        },
+        {
+          "name": "T04 Listar produtos (paginado)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/produtos?page=1&limit=5"
+          }
+        },
+        { "name": "Listar unidades", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{base_url}}/api/unidades" } }
+      ]
+    },
+    {
+      "name": "Cardápio",
+      "item": [
+        { "name": "T05 Cardápio público (só vendável)", "request": { "method": "GET", "url": "{{base_url}}/api/unidades/1/cardapio" } },
+        {
+          "name": "Ajustar estoque",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"estoque\": 100\n}" },
+            "url": "{{base_url}}/api/unidades/1/cardapio/1/estoque"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Clientes & LGPD",
+      "item": [
+        {
+          "name": "Cadastrar cliente (com consentimento)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"nome\": \"Carlos Lima\",\n  \"email\": \"carlos.lima@email.com\",\n  \"telefone\": \"81999990000\",\n  \"consentimento_fidelidade\": true\n}" },
+            "url": "{{base_url}}/api/clientes"
+          }
+        },
+        { "name": "Consultar cliente (auditado)", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{base_url}}/api/clientes/1" } },
+        { "name": "Extrato de fidelidade", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{base_url}}/api/clientes/1/fidelidade" } },
+        {
+          "name": "T06 Resgatar pontos (mín. 100)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"pontos\": 100\n}" },
+            "url": "{{base_url}}/api/clientes/1/fidelidade/resgate"
+          }
+        },
+        { "name": "Exportar dados (portabilidade)", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{base_url}}/api/clientes/1/dados-pessoais" } }
+      ]
+    },
+    {
+      "name": "Pedidos",
+      "item": [
+        {
+          "name": "T07 Criar pedido (canalPedido obrigatório)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.success) pm.collectionVariables.set('pedido_id', j.data.id);",
+                  "pm.test('201 criado', function(){ pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"unidade_id\": 1,\n  \"canalPedido\": \"APP\",\n  \"cliente_id\": 1,\n  \"usar_pontos\": true,\n  \"itens\": [\n    { \"produto_id\": 1, \"quantidade\": 2 },\n    { \"produto_id\": 4, \"quantidade\": 1 }\n  ]\n}" },
+            "url": "{{base_url}}/api/pedidos"
+          }
+        },
+        {
+          "name": "T08 Listar pedidos por canal (filtro)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{base_url}}/api/pedidos?canalPedido=APP&page=1&limit=10" }
+        },
+        { "name": "Detalhe do pedido", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{base_url}}/api/pedidos/{{pedido_id}}" } },
+        {
+          "name": "T09 Avançar status (EM_PREPARO)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"EM_PREPARO\"\n}" },
+            "url": "{{base_url}}/api/pedidos/{{pedido_id}}/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pagamento",
+      "item": [
+        {
+          "name": "T10 Solicitar pagamento (mock)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var j = pm.response.json();",
+                  "if (j.success) pm.collectionVariables.set('gateway_ref', j.data.gateway_ref);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"metodo\": \"PIX\"\n}" },
+            "url": "{{base_url}}/api/pedidos/{{pedido_id}}/pagamentos"
+          }
+        },
+        {
+          "name": "T11 Webhook APROVADO (HMAC) → pedido avança + pontos",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var body = JSON.stringify({ gateway_ref: pm.collectionVariables.get('gateway_ref'), status: 'APROVADO' });",
+                  "pm.collectionVariables.set('webhook_body', body);",
+                  "var sig = CryptoJS.HmacSHA256(body, pm.collectionVariables.get('webhook_secret')).toString(CryptoJS.enc.Hex);",
+                  "pm.collectionVariables.set('webhook_sig', sig);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Webhook-Signature", "value": "{{webhook_sig}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{{webhook_body}}" },
+            "url": "{{base_url}}/api/pagamentos/webhook"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Relatórios",
+      "item": [
+        { "name": "Vendas por unidade/região", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{base_url}}/api/relatorios/vendas" } },
+        { "name": "Financeiro", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{base_url}}/api/relatorios/financeiro" } },
+        { "name": "Auditoria (cancelamentos)", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{base_url}}/api/auditoria?acao=PEDIDO_CANCELAR" } }
+      ]
+    },
+    {
+      "name": "Erros (negativos)",
+      "item": [
+        {
+          "name": "T12 Acesso sem token (401)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('401', function(){ pm.response.to.have.status(401); });"] } }],
+          "request": { "method": "GET", "url": "{{base_url}}/api/pedidos" }
+        },
+        {
+          "name": "T13 Sem permissão - gerente em relatório (403)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('403', function(){ pm.response.to.have.status(403); });"] } }],
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token_gerente}}" }], "url": "{{base_url}}/api/relatorios/financeiro" }
+        },
+        {
+          "name": "T14 Validação - pedido sem canalPedido (422)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('422', function(){ pm.response.to.have.status(422); });"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"unidade_id\": 1,\n  \"itens\": [ { \"produto_id\": 1, \"quantidade\": 1 } ]\n}" },
+            "url": "{{base_url}}/api/pedidos"
+          }
+        },
+        {
+          "name": "T15 Regra de negócio - estoque insuficiente (409)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('409 ESTOQUE_INSUFICIENTE', function(){ pm.response.to.have.status(409); pm.expect(pm.response.json().error).to.eql('ESTOQUE_INSUFICIENTE'); });"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"unidade_id\": 1,\n  \"canalPedido\": \"APP\",\n  \"itens\": [ { \"produto_id\": 1, \"quantidade\": 999999 } ]\n}" },
+            "url": "{{base_url}}/api/pedidos"
+          }
+        },
+        {
+          "name": "T16 Pagamento mock RECUSADO (status coerente)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var body = JSON.stringify({ gateway_ref: pm.collectionVariables.get('gateway_ref'), status: 'RECUSADO' });",
+                  "pm.collectionVariables.set('webhook_body_rec', body);",
+                  "var sig = CryptoJS.HmacSHA256(body, pm.collectionVariables.get('webhook_secret')).toString(CryptoJS.enc.Hex);",
+                  "pm.collectionVariables.set('webhook_sig_rec', sig);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Webhook-Signature", "value": "{{webhook_sig_rec}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{{webhook_body_rec}}" },
+            "url": "{{base_url}}/api/pagamentos/webhook"
+          }
+        },
+        {
+          "name": "Webhook sem assinatura (401)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"gateway_ref\": \"PSP-INEXISTENTE\",\n  \"status\": \"APROVADO\"\n}" },
+            "url": "{{base_url}}/api/pagamentos/webhook"
+          }
+        }
+      ]
+    }
+  ]
+}

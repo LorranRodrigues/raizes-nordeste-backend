@@ -1,0 +1,12 @@
+# Direciona todas as requisições para o front controller (index.php),
+# preservando o caminho original em REQUEST_URI.
+RewriteEngine On
+
+# Não reescreve arquivos/diretórios que existam fisicamente.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+# Garante que o header Authorization chegue ao PHP (alguns ambientes o removem).
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

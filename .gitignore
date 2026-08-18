@@ -1,0 +1,19 @@
+# Configuração sensível (use variáveis de ambiente em produção)
+.env
+
+# Logs e temporários
+*.log
+/tmp/
+
+# Dependências (não usadas — projeto é PHP puro)
+/vendor/
+
+# Arquivos de IDE/SO
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Documentação (Markdown)
+*.md
+!README.md
