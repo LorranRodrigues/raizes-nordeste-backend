@@ -18,3 +18,8 @@ Thumbs.db
 *.md
 !README.md
 !database/MODELO-DADOS.md
+!docs/PLANO-DE-TESTES.md
+!docs/DIAGRAMAS.md
+!docs/ARQUITETURA.md
+!docs/PROMOCOES-CAMPANHAS.md
+
