@@ -17,3 +17,4 @@ Thumbs.db
 # Documentação (Markdown)
 *.md
 !README.md
+!database/MODELO-DADOS.md
